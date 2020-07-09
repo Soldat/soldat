@@ -100,7 +100,7 @@ function SteamAPI_ISteamClient_GetISteamParties(SteamInterface: ISteamClient; hS
 function SteamAPI_ISteamClient_GetISteamRemotePlay(SteamInterface: ISteamClient; hSteamUser: HSteamUser; hSteamPipe: HSteamPipe; pchVersion: PChar): ISteamRemotePlay; cdecl; external STEAMLIB;
 
 
-function SteamAPI_SteamUser_v020(): ISteamUser; cdecl; external STEAMLIB;
+function SteamAPI_SteamUser_v021(): ISteamUser; cdecl; external STEAMLIB;
 
 function SteamAPI_ISteamUser_GetHSteamUser(SteamInterface: ISteamUser): HSteamUser; cdecl; external STEAMLIB;
 function SteamAPI_ISteamUser_BLoggedOn(SteamInterface: ISteamUser): Boolean; cdecl; external STEAMLIB;
@@ -1434,7 +1434,7 @@ begin
 
   UGC := TSteamUGC.Init(SteamAPI_SteamUGC_v014());
   Utils := TSteamUtils.Init(SteamAPI_SteamUtils_v009());
-  User := TSteamUser.Init(SteamAPI_SteamUser_v020());
+  User := TSteamUser.Init(SteamAPI_SteamUser_v021());
   Screenshots := TSteamScreenshots.Init(SteamAPI_SteamScreenshots_v003());
   Friends := TSteamFriends.Init(SteamAPI_SteamFriends_v017());
 end;

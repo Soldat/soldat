@@ -459,7 +459,7 @@ begin
     end else
       WriteLn('[Steam] Failed to download workshop item, id:' + IntToStr(Callback.m_nPublishedFileId) + ' error: ' + IntToStr(Ord(Callback.m_eResult)));
   end;
-end;}
+end;
 
 procedure OnSteamServersConnected(); cdecl;
 begin

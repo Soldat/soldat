@@ -59,6 +59,7 @@ type
     FHeight: Integer;
     FComponents: Integer;
     FNumFrames: Integer;
+    FDelays: PInteger;
     FLoadedFromFile: Boolean;
   public
     constructor Create(Filename: string; ColorKey: TGfxColor); overload;
@@ -2324,11 +2325,19 @@ end;
 constructor TGfxImage.Create(Filename: string; ColorKey: TGfxColor);
 var
   FileBuffer: PHYSFS_Buffer;
+  i: Integer;
 begin
   FileBuffer := PhysFS_readBuffer(PChar(Filename));
-  if Length(FileBuffer) > 0 then
-    FData := stbi_xload_mem(@FileBuffer[0], Length(FileBuffer), @FWidth, @FHeight, @FNumFrames)
-  else
+  FDelays := Nil;
+  if Length(FileBuffer) > 0 then begin
+    FData := stbi_xload_mem(@FileBuffer[0], Length(FileBuffer), @FWidth, @FHeight, @FNumFrames, @FDelays);
+
+    if FNumFrames > 1 then begin
+      for i := 0 to FNumFrames - 1 do begin
+        FDelays[i] := FDelays[i] div 10;
+      end;
+    end;
+  end else
     FData := nil;
 
   if FData <> nil then
@@ -2355,39 +2364,32 @@ begin
   FHeight := Height;
   FComponents := Comp;
   FNumFrames := 1;
+  FDelays := Nil;
   FLoadedFromFile := False;
 end;
 
 destructor TGfxImage.Destroy;
 begin
-  if FLoadedFromFile then
-      stbi_image_free(FData)
-  else if FData <> nil then
-      FreeMem(FData);
+  if FLoadedFromFile then begin
+    stbi_image_free(FData);
+    stbi_image_free(FDelays);
+  end else if FData <> nil then
+    FreeMem(FData);
 
   inherited;
 end;
 
 function TGfxImage.GetImageData(Frame: Integer = 0): PByte;
 begin
-  Result := FData;
-  Inc(Result, (FWidth * FHeight * FComponents + 2) * Frame);
+  Result := FData + (FWidth * FHeight * FComponents * Frame);
 end;
 
 function TGfxImage.GetFrameDelay(Frame: Integer = 0): Word;
-var
-  p: PByte;
 begin
-  Result := 0;
-
   if FNumFrames > 1 then
-  begin
-    p := FData;
-    Inc(p, (FWidth * FHeight * FComponents + 2) * (Frame + 1) - 2);
-    Result := p^;
-    Inc(p);
-    Result := Result or (Word(p^) shl 8);
-  end;
+    Result := FDelays[Frame]
+  else
+    Result := 0;
 end;
 
 procedure TGfxImage.Update(x, y, w, h: Integer; Data: PByte; Frame: Integer = 0);
@@ -2404,7 +2406,7 @@ begin
   Src := Data;
   Dst := FData;
 
-  Inc(Dst, (DstLine * FHeight + 2) * Frame + (DstLine * y + x * FComponents));
+  Inc(Dst, (DstLine * FHeight) * Frame + (DstLine * y + x * FComponents));
 
   for i := 0 to h - 1 do
   begin
@@ -2437,8 +2439,6 @@ begin
       p^ := Round(p^ * a); Inc(p);
       p^ := Round(p^ * a); Inc(p, 2);
     end;
-
-    Inc(p, 2);
   end;
 end;
 
@@ -2446,12 +2446,11 @@ procedure TGfxImage.Resize(w, h: Integer);
 var
   i, Size: Integer;
   Data, Dst: PByte;
-  Delay: Word;
 begin
   if FData = nil then
     Exit;
 
-  Size := w * h * FComponents + (2 * Ord(FNumFrames > 1));
+  Size := w * h * FComponents;
   GetMem(Data, FNumFrames * Size);
 
   Dst := Data;
@@ -2462,16 +2461,6 @@ begin
       Dst, w, h, 0, FComponents);
 
     Inc(Dst, Size);
-
-    if FNumFrames > 1 then
-    begin
-      Delay := GetFrameDelay(i);
-      Dec(Dst, 2);
-      Dst^ := Delay and $FF;
-      Inc(Dst);
-      Dst^ := (Delay shr 8) and $FF;
-      Inc(Dst);
-    end;
   end;
 
   if FLoadedFromFile then

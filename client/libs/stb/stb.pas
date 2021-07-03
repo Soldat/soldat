@@ -10,6 +10,9 @@ unit stb;
 
 interface
 
+type
+  PPInteger = ^PInteger;
+
 const
  {$IFDEF MSWINDOWS}
   STBLIB = 'stb.dll';
@@ -18,10 +21,10 @@ const
  {$ENDIF}
 
 // stb_image
-function stbi_xload_file(filename: PAnsiChar; w, h, f: PInteger): PByte;
+function stbi_xload_file(filename: PAnsiChar; w, h, f: PInteger; delays: PPInteger): PByte;
   cdecl; external STBLIB;
 
-function stbi_xload_mem(buffer: PByte; len: Integer; w, h, f: PInteger): PByte;
+function stbi_xload_mem(buffer: PByte; len: Integer; w, h, f: PInteger; delays: PPInteger): PByte;
   cdecl; external STBLIB;
 
 function stbi_load(filename: PAnsiChar; w, h, c: PInteger; req_comp: Integer): PByte;

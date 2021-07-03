@@ -1240,6 +1240,8 @@ begin
   if GetMapInfo(Name, UserDirectory, Status) then
   begin
     MapChange := Status;
+    // Make sure time limit doesn't change map out from under us.
+    TimeLimitCounter := 0;
     MapChangeCounter := MapChangeTime;
     // send to client that map changes
     ServerMapChange(ALL_PLAYERS);

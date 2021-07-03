@@ -1872,7 +1872,6 @@ var
   CursorScale: Single;
   CursorScaledOffset: TVector2;
   CursorBinkScale: Single;
-  //CursorBinkOffset: TVector2;
   CursorColor: Integer;
   Alfa: Integer;
   CharacterOffset: TVector2;
@@ -2176,22 +2175,19 @@ begin
       CursorSize.x := T^[GFX_INTERFACE_CURSOR].Width * T^[GFX_INTERFACE_CURSOR].Scale;
       CursorSize.y := T^[GFX_INTERFACE_CURSOR].Height * T^[GFX_INTERFACE_CURSOR].Scale;
 
-      // Base crosshair offset. Larger offset if interface scaling is enabled
-      CursorScaledOffset.x := CursorSize.x / 2 * CursorScale / _rscala.x;
-      CursorScaledOffset.y := CursorSize.y / 2 * CursorScale / _rscala.y;
-
       Moveacc := SpriteMe.GetMoveacc;
       Inaccuracy := HitSprayCounter + Moveacc * 100;
 
-      // Embiggen the crosshair when binked, keeping it centered
+      // Embiggen the crosshair when binked
       if Inaccuracy > 0 then
       begin
         CursorBinkScale := Power(Inaccuracy, 0.6) / 20 * CursorScale;
-        //CursorBinkOffset.x := CursorSize.x / 2 * CursorBinkScale / _rscala.x;
-        //CursorBinkOffset.y := CursorSize.y / 2 * CursorBinkScale / _rscala.y;
-        // TODO: Finish
         CursorScale := CursorScale + CursorBinkScale;
       end;
+
+      // Scale crosshair from its center
+      CursorScaledOffset.x := CursorSize.x / 2 * CursorScale / _rscala.x;
+      CursorScaledOffset.y := CursorSize.y / 2 * CursorScale / _rscala.y;
 
       // Color and alpha for crosshair
       if CursorTextLength > 0 then

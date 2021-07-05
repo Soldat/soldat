@@ -1,9 +1,4 @@
 unit uPSRuntime;
-
-// PATCH soldat: don't pollute the build log
-{$warnings off}
-{$hints off}
-
 {$I PascalScript.inc}
 {
 
@@ -14,7 +9,10 @@ Copyright (C) 2000-2009 by Carlo Kok (ck@carlo-kok.com)
 
 interface
 uses
-  SysUtils, uPSUtils{$IFDEF DELPHI6UP}, variants{$ENDIF}{$IFDEF MACOS},uPSCMac{$ELSE}{$IFNDEF PS_NOIDISPATCH}{$IFDEF DELPHI3UP}, ActiveX, Windows{$ELSE}, Ole2{$ENDIF}{$ENDIF}{$ENDIF};
+  {$IFNDEF FPC} {$IFDEF DELPHI2010UP} System.Rtti,{$ENDIF} {$ENDIF}
+  {$IFDEF FPC}{$IFDEF USEINVOKECALL}Rtti,{$ENDIF}{$ENDIF}
+  SysUtils, uPSUtils{$IFDEF DELPHI6UP}, variants{$ENDIF}
+  {$IFNDEF PS_NOIDISPATCH}{$IFDEF DELPHI3UP}, ActiveX, Windows{$ELSE}, Ole2{$ENDIF}{$ENDIF};
 
 
 type
@@ -1106,7 +1104,10 @@ function IDispatchInvoke(Self: IDispatch; PropertySet: Boolean; const Name: tbtS
 
 implementation
 uses
-  TypInfo {$IFDEF DELPHI3UP}{$IFNDEF FPC}{$IFNDEF KYLIX} , ComObj {$ENDIF}{$ENDIF}{$ENDIF}{$IFDEF PS_FPC_HAS_COM}, ComObj{$ENDIF};
+  TypInfo {$IFDEF DELPHI3UP}
+  {$IFNDEF FPC}{$IFDEF MSWINDOWS} , ComObj {$ENDIF}{$ENDIF}{$ENDIF}
+  {$IFDEF PS_FPC_HAS_COM}, ComObj{$ENDIF}
+  {$IF NOT DEFINED (NEXTGEN) AND NOT DEFINED (MACOS) AND  DEFINED (DELPHI_TOKYO_UP)}, AnsiStrings{$IFEND};
 
 {$IFDEF DELPHI3UP }
 resourceString
@@ -1351,7 +1352,6 @@ begin
 end;
 //-------------------------------------------------------------------
 
-{$warnings off}
 {$IFNDEF PS_NOWIDESTRING}
 function wPadl(s: tbtwidestring; i: longInt): tbtwidestring;
 begin
@@ -1545,9 +1545,9 @@ begin
       tkVariant: begin Result := '[Variant]'; exit; end;
 	  {$IFDEF DELPHI6UP}
 	  {$IFNDEF PS_NOWIDESTRING}
-      tkWString: begin Result := ''''+tbtString(GetWideStrProp(Instance, pp))+''; end;
+      tkWString: begin Result := ''''+tbtString(GetWideStrProp(Instance, pp))+''''; exit; end;
 	  {$IFDEF DELPHI2009UP}
-      tkUString: begin Result := ''''+tbtString(GetUnicodeStrProp(Instance, pp))+''; end;
+      tkUString: begin Result := ''''+tbtString({$IFDEF DELPHI_TOKYO_UP}GetStrProp{$ELSE}GetUnicodeStrProp{$ENDIF}(Instance, pp))+''''; exit; end;
 	  {$ENDIF}
       {$ENDIF}
 	  {$ENDIF}
@@ -1717,9 +1717,9 @@ begin
     {$ENDIF}{$IFNDEF PS_NOINTERFACES}btInterface, {$ENDIF}
     btclass, btPChar, btString: FrealSize := PointerSize;
     btSingle, bts32, btU32: FRealSize := 4;
-    btProcPtr: FRealSize := 2 * sizeof(Pointer) + sizeof(Cardinal);
+    btProcPtr: FRealSize := 3 * sizeof(Pointer);
     btCurrency: FrealSize := Sizeof(Currency);
-    btPointer: FRealSize := 2 * sizeof(Pointer) + sizeof(LongBool); // ptr, type, freewhendone
+    btPointer: FRealSize := 3 * sizeof(Pointer); // ptr, type, freewhendone
     btDouble{$IFNDEF PS_NOINT64}, bts64{$ENDIF}: FrealSize := 8;
     btExtended: FrealSize := SizeOf(Extended);
     btReturnAddress: FrealSize := Sizeof(TBTReturnAddress);
@@ -2939,7 +2939,6 @@ var
     end;
   end;
 {$WARNINGS ON}
-{$warnings off} // PATCH soldat: don't pollute the build log
 
   function LoadVars: Boolean;
   var
@@ -3536,6 +3535,15 @@ begin
   end;
 end;
 
+function PSGetAnsiChar(Src: Pointer; aType: TPSTypeRec): tbtchar;
+var Res : tbtString;
+begin
+  Res := PSGetAnsiString(Src,aType);
+  if Length(Res) > 0 then
+    Result := Res[{$IFDEF DELPHI2009UP}Low(Res){$ELSE}1{$ENDIF}]
+  else
+    Result := #0;
+end;
 
 function PSGetAnsiString(Src: Pointer; aType: TPSTypeRec): tbtString;
 begin
@@ -3949,8 +3957,8 @@ begin
         for i := 0 to Len -1 do
         begin
           tbtU32(Dest^) := tbtU32(Src^);
-          Dest := Pointer(IPointer(Dest) + 4);
-          Src := Pointer(IPointer(Src) + 4);
+          Dest := Pointer(IPointer(Dest) + PointerSize);
+          Src := Pointer(IPointer(Src) + PointerSize);
           Pointer(Dest^) := Pointer(Src^);
           Dest := Pointer(IPointer(Dest) + PointerSize);
           Src := Pointer(IPointer(Src) + PointerSize);
@@ -4119,9 +4127,9 @@ begin
               Pointer(Dest^) := Pointer(Src^);
               Dest := Pointer(IPointer(Dest) + PointerSize);
               Src := Pointer(IPointer(Src) + PointerSize);
-              LongBool(Dest^) := false;
-              Dest := Pointer(IPointer(Dest) + sizeof(LongBool));
-              Src := Pointer(IPointer(Src) + sizeof(LongBool));
+              Pointer(Dest^) := nil;
+              Dest := Pointer(IPointer(Dest) + PointerSize);
+              Src := Pointer(IPointer(Src) + PointerSize);
             end;
           end else begin
             for i := 0 to Len -1 do
@@ -4152,8 +4160,8 @@ begin
                 Pointer(Pointer(IPointer(Dest) + PointerSize)^) := nil;
                 Pointer(Pointer(IPointer(Dest) + PointerSize2)^) := nil;
               end;
-              Dest := Pointer(IPointer(Dest) + PointerSize*2+sizeof(LongBool));
-              Src := Pointer(IPointer(Src) + PointerSize*2+sizeof(LongBool));
+              Dest := Pointer(IPointer(Dest) + PointerSize*3);
+              Src := Pointer(IPointer(Src) + PointerSize*3);
             end;
           end;
         end;
@@ -4512,7 +4520,7 @@ begin
       btPChar: pansichar(dest^) := pansichar(PSGetAnsiString(Src, srctype));
       btString:
         tbtstring(dest^) := PSGetAnsiString(Src, srctype);
-      btChar: tbtchar(dest^) := tbtchar(PSGetUInt(Src, srctype));
+      btChar: tbtchar(dest^) := PSGetAnsiChar(Src, srctype);
       {$IFNDEF PS_NOWIDESTRING}
       btWideString: tbtwidestring(dest^) := PSGetWideString(Src, srctype);
       btUnicodeString: tbtUnicodeString(dest^) := PSGetUnicodeString(Src, srctype);
@@ -4573,6 +4581,9 @@ begin
         begin
           if srctype.BaseType = btClass then
             TObject(Dest^) := TObject(Src^)
+          else
+          if srctype.BaseType = btVariant then
+            TbtU32(Dest^) := Variant(Src^)
           else
           // nx change start
           if (srctype.BaseType in [btS32, btU32]) then
@@ -6771,7 +6782,9 @@ begin
             begin
               if Param >= Cardinal(PSDynArrayGetLength(Pointer(Dest.P^), dest.aType)) then
               begin
-                CMD_Err(erOutOfRange);
+                CMD_Err2(erCustomError,
+                         tbtstring(Format('Out Of Range! Element index is out of Array range: Element Index is %d, Array length = %d',
+                                [Cardinal(PSDynArrayGetLength(Pointer(Dest.P^), dest.aType)),Param])));
                 Result := False;
                 exit;
               end;
@@ -6782,7 +6795,9 @@ begin
             begin
               if Param >= Cardinal(TPSTypeRec_StaticArray(Dest.aType).Size) then
               begin
-                CMD_Err(erOutOfRange);
+                CMD_Err2(erCustomError,
+                         tbtstring(Format('Out Of Range! Element index is out of Array range: Element Index is %d, Array length = %d',
+                                [Cardinal(TPSTypeRec_StaticArray(Dest.aType).Size),Param])));
                 Result := False;
                 exit;
               end;
@@ -6923,7 +6938,9 @@ begin
             begin
               if Cardinal(Param) >= Cardinal(PSDynArrayGetLength(Pointer(Dest.P^), dest.aType)) then
               begin
-                CMD_Err(erOutOfRange);
+                CMD_Err2(erCustomError,
+                         tbtstring(Format('Out Of Range! Element index is out of Array range: Element Index is %d, Array length = %d',
+                                [Cardinal(PSDynArrayGetLength(Pointer(Dest.P^), dest.aType)),Param])));
                 Result := False;
                 exit;
               end;
@@ -6934,7 +6951,9 @@ begin
             begin
               if Param >= Cardinal(TPSTypeRec_StaticArray(Dest.aType).Size) then
               begin
-                CMD_Err(erOutOfRange);
+                CMD_Err2(erCustomError,
+                         tbtstring(Format('Out Of Range! Element index is out of Array range: Element Index is %d, Array length = %d',
+                                [Cardinal(TPSTypeRec_StaticArray(Dest.aType).Size),Param])));
                 Result := False;
                 exit;
               end;
@@ -8834,7 +8853,7 @@ begin
     8: // StrSet
       begin
         temp := NewTPSVariantIFC(Stack[Stack.Count -3], True);
-        if (temp.Dta = nil) or not (temp.aType.BaseType in [btString, btUnicodeString]) then 
+        if (temp.Dta = nil) or not (temp.aType.BaseType in [btString, btUnicodeString]) then
         begin
           Result := False;
           exit;
@@ -8881,7 +8900,7 @@ begin
       else if Stack.GetItem(Stack.Count -2)^.FType.BaseType = btWideString then
         Stack.SetWideString(-1, SysUtils.Trim(Stack.GetWideString(-2))) // Trim
       else
-{$ENDIF}      
+{$ENDIF}
         Stack.SetAnsiString(-1, AnsiString(SysUtils.Trim(String(Stack.GetAnsiString(-2)))));// Trim
     13: Stack.SetInt(-1, Length(Stack.GetAnsiString(-2))); // Length
     14: // SetLength
@@ -9263,14 +9282,14 @@ begin
   Result:=true;
   arr:=NewTPSVariantIFC(Stack[Stack.Count-1],true);
   case arr.aType.BaseType of
-    btU8         : Stack.SetInt(-1,Tbtu8(arr.dta^)-Stack.GetInt(-2));     //Byte
-    btS8         : Stack.SetInt(-1,Tbts8(arr.dta^)-Stack.GetInt(-2));     //ShortInt
-    btU16        : Stack.SetInt(-1,Tbtu16(arr.dta^)-Stack.GetInt(-2));    //Word
-    btS16        : Stack.SetInt(-1,Tbts16(arr.dta^)-Stack.GetInt(-2));    //SmallInt
-    btU32        : Stack.SetInt(-1,Tbtu32(arr.dta^)-Stack.GetInt(-2));    //Cardinal/LongWord
-    btS32        : Stack.SetInt(-1,Tbts32(arr.dta^)-Stack.GetInt(-2));    //Integer/LongInt
+    btU8         : Stack.SetInt(-1,Tbtu8(arr.dta^)-1);     //Byte
+    btS8         : Stack.SetInt(-1,Tbts8(arr.dta^)-1);     //ShortInt
+    btU16        : Stack.SetInt(-1,Tbtu16(arr.dta^)-1);    //Word
+    btS16        : Stack.SetInt(-1,Tbts16(arr.dta^)-1);    //SmallInt
+    btU32        : Stack.SetInt(-1,Tbtu32(arr.dta^)-1);    //Cardinal/LongWord
+    btS32        : Stack.SetInt(-1,Tbts32(arr.dta^)-1);    //Integer/LongInt
 {$IFNDEF PS_NOINT64}
-    btS64        : Stack.SetInt64(-1,Tbts64(arr.dta^)-Stack.GetInt64(-2));
+    btS64        : Stack.SetInt64(-1,Tbts64(arr.dta^)-1);
 {$ENDIF}
     else Result:=false;
   end;
@@ -9283,14 +9302,14 @@ begin
   Result:=true;
   arr:=NewTPSVariantIFC(Stack[Stack.Count-1],true);
   case arr.aType.BaseType of
-    btU8         : Stack.SetInt(-1,Tbtu8(arr.dta^)+Stack.GetInt(-2));     //Byte
-    btS8         : Stack.SetInt(-1,Tbts8(arr.dta^)+Stack.GetInt(-2));     //ShortInt
-    btU16        : Stack.SetInt(-1,Tbtu16(arr.dta^)+Stack.GetInt(-2));    //Word
-    btS16        : Stack.SetInt(-1,Tbts16(arr.dta^)+Stack.GetInt(-2));    //SmallInt
-    btU32        : Stack.SetInt(-1,Tbtu32(arr.dta^)+Stack.GetInt(-2));    //Cardinal/LongWord
-    btS32        : Stack.SetInt(-1,Tbts32(arr.dta^)+Stack.GetInt(-2));    //Integer/LongInt
+    btU8         : Stack.SetInt(-1,Tbtu8(arr.dta^)+1);     //Byte
+    btS8         : Stack.SetInt(-1,Tbts8(arr.dta^)+1);     //ShortInt
+    btU16        : Stack.SetInt(-1,Tbtu16(arr.dta^)+1);    //Word
+    btS16        : Stack.SetInt(-1,Tbts16(arr.dta^)+1);    //SmallInt
+    btU32        : Stack.SetInt(-1,Tbtu32(arr.dta^)+1);    //Cardinal/LongWord
+    btS32        : Stack.SetInt(-1,Tbts32(arr.dta^)+1);    //Integer/LongInt
 {$IFNDEF PS_NOINT64}
-    btS64        : Stack.SetInt64(-1,Tbts64(arr.dta^)+Stack.GetInt64(-2));
+    btS64        : Stack.SetInt64(-1,Tbts64(arr.dta^)+1);
 {$ENDIF}
     else Result:=false;
   end;
@@ -9327,7 +9346,7 @@ begin
 end;
 
 
-{$IFNDEF DELPHI6UP}
+{$IFDEF DELPHI6UP}
 function _VarArrayGet(var S : Variant; I : Integer) : Variant;
 begin
   result := VarArrayGet(S, [I]);
@@ -9396,7 +9415,7 @@ begin
   {$ENDIF}
   RegisterDelphiFunction(@Null, 'Null', cdRegister);
   RegisterDelphiFunction(@VarIsNull, 'VarIsNull', cdRegister);
-  RegisterDelphiFunction(@VarType, 'VarType', cdRegister);
+  RegisterDelphiFunction(@{$IFDEF FPC}variants.{$ENDIF}VarType, 'VarType', cdRegister);
   {$IFNDEF PS_NOIDISPATCH}
   RegisterDelphiFunction(@IDispatchInvoke, 'IdispatchInvoke', cdregister);
   {$ENDIF}
@@ -9427,7 +9446,7 @@ begin
   RegisterFunctionName('WStrSet', DefProc, Pointer(44), nil);
 
   {$ENDIF}
-  {$IFNDEF DELPHI6UP}
+  {$IFDEF DELPHI6UP}
   RegisterDelphiFunction(@_VarArrayGet, 'VarArrayGet', cdRegister);
   RegisterDelphiFunction(@_VarArraySet, 'VarArraySet', cdRegister);
   {$ENDIF}
@@ -9437,7 +9456,8 @@ end;
 
 function ToString(p: PansiChar): tbtString;
 begin
-  SetString(Result, p, StrLen(p));
+  SetString(Result, p,
+  {$IF NOT DEFINED (NEXTGEN) AND NOT DEFINED (MACOS) AND DEFINED (DELPHI_TOKYO_UP)}AnsiStrings.StrLen(p){$ELSE}Length(p){$IFEND});
 end;
 
 function IntPIFVariantToVariant(Src: pointer; aType: TPSTypeRec; var Dest: Variant): Boolean;
@@ -9695,7 +9715,7 @@ begin
 {$ENDIF}
       end;
     end;
-    datap := Pointer(IPointer(datap)+ (2*sizeof(Pointer)+sizeof(Longbool)));
+    datap := Pointer(IPointer(datap)+ (3*sizeof(Pointer)));
     p := PansiChar(p) + Result^.ElementSize;
   end;
 end;
@@ -9811,7 +9831,7 @@ begin
 {$ENDIF}
 {$ENDIF}
       end;
-      datap := Pointer(IPointer(datap)+ (2*sizeof(Pointer)+sizeof(LongBool)));
+      datap := Pointer(IPointer(datap)+ (3*sizeof(Pointer)));
       p := Pointer(IPointer(p) + Cardinal(v^.ElementSize));
     end;
     FreeMem(v.Data, v.ElementSize * v.ItemCount);
@@ -9820,33 +9840,55 @@ begin
 end;
 
 
-{$ifndef FPC}
-{$IFDEF Delphi6UP}
-  {$IFDEF CPUX64}
-    {$include x64.inc}
+{$IFNDEF FPC}
+  {$UNDEF _INVOKECALL_INC_}
+  {$UNDEF USEINVOKECALL}
+
+  {$IFDEF DELPHI23UP}
+  {$IFNDEF AUTOREFCOUNT}
+  {$IFNDEF PS_USECLASSICINVOKE}
+    {$DEFINE USEINVOKECALL}
+  {$ENDIF}
+  {$ENDIF}
+  {$ENDIF}
+
+  {$IFDEF USEINVOKECALL}
+    {$include InvokeCall.inc}
+    {$DEFINE _INVOKECALL_INC_}
   {$ELSE}
-  {$include x86.inc}
+    {$IFDEF Delphi6UP}
+      {$IFDEF CPUX64}
+        {$include x64.inc}
+      {$ELSE}
+        {$include x86.inc}
+      {$ENDIF}
+    {$ELSE}
+      {$include x86.inc}
+    {$ENDIF}
   {$ENDIF}
 {$ELSE}
-  {$include x86.inc}
-{$ENDIF}
-{$else}
-{$IFDEF Delphi6UP}
-  {$if defined(cpu86)}
+  
+  {$IFDEF USEINVOKECALL}
+    {$include InvokeCall.inc}
+    {$DEFINE _INVOKECALL_INC_}
+  {$ELSE}
+  {$IFDEF Delphi6UP}
+    {$if defined(cpu86)}
+      {$include x86.inc}
+    {$elseif defined(cpupowerpc)}
+      {$include powerpc.inc}
+    {$elseif defined(cpuarm)}
+      {$include arm.inc}
+    {$elseif defined(CPUX86_64)}
+      {$include x64.inc}
+    {$else}
+      {$fatal Pascal Script is not supported for your architecture at the moment!}
+    {$ifend}
+  {$ELSE}
     {$include x86.inc}
-  {$elseif defined(cpupowerpc)}
-    {$include powerpc.inc}
-  {$elseif defined(cpuarm)}
-    {$include arm.inc}
-  {$elseif defined(CPUX86_64)}
-    {$include x64.inc}
-  {$else}
-    {$fatal Pascal Script is not supported for your architecture at the moment!}
-  {$ifend}
-{$ELSE}
-{$include x86.inc}
+  {$ENDIF}
+  {$ENDIF}
 {$ENDIF}
-{$endif}
 
 type
   PScriptMethodInfo = ^TScriptMethodInfo;
@@ -10268,7 +10310,7 @@ begin
   // the VMT class pointer in EDX so they are effectively swaped
   // using register calling convention
   {$IFDEF CPU64}
-  PPSVariantU32(IntVal).Data := Int64(FSelf);
+  PPSVariantS64(IntVal).Data := Int64(FSelf);
   {$ELSE}
   PPSVariantU32(IntVal).Data := Cardinal(FSelf);
   {$ENDIF}
@@ -10297,7 +10339,11 @@ begin
     v := NewPPSVariantIFC(Stack[CurrStack + 1], True);
   end else v := nil;
   try
+    {$IFDEF _INVOKECALL_INC_}
+    Result := Caller.InnerfuseCall(FSelf, p.Ext1, TPSCallingConvention(Integer(cc) or 64), MyList, v);
+    {$ELSE}
     Result := Caller.InnerfuseCall(FSelf, p.Ext1, {$IFDEF FPC}TPSCallingConvention(Integer(cc) or 64){$ELSE}cc{$ENDIF}, MyList, v);
+    {$ENDIF}
   finally
     DisposePPSVariantIFC(v);
     DisposePPSVariantIFCList(mylist);
@@ -10382,7 +10428,11 @@ begin
     v := NewPPSVariantIFC(Stack[CurrStack + 1], True);
   end else v := nil;
   try
+    {$IFDEF _INVOKECALL_INC_}
+    Result := Caller.InnerfuseCall(FSelf, VirtualClassMethodPtrToPtr(p.Ext1, FSelf), TPSCallingConvention(Integer(cc) or 128), MyList, v);
+    {$ELSE}
     Result := Caller.InnerfuseCall(FSelf, VirtualClassMethodPtrToPtr(p.Ext1, FSelf), {$IFDEF FPC}TPSCallingConvention(Integer(cc) or 128){$ELSE}cc{$ENDIF}, MyList, v);
+    {$ENDIF}
   finally
     DisposePPSVariantIFC(v);
     DisposePPSVariantIFCList(mylist);
@@ -10647,7 +10697,7 @@ begin
 {$IFNDEF DELPHI2009UP}btUnicodeString,{$ENDIF}
   btWideString: SetWideStrProp(TObject(FSelf), P.Ext1, tbtWidestring(n.dta^));
 {$IFDEF DELPHI2009UP}
-  btUnicodeString: SetUnicodeStrProp(TObject(FSelf), P.Ext1, tbtUnicodestring(n.dta^));
+  btUnicodeString: {$IFDEF DELPHI_TOKYO_UP}SetStrProp{$ELSE}SetUnicodeStrProp{$ENDIF}(TObject(FSelf), P.Ext1, tbtUnicodestring(n.dta^));
 {$ENDIF}
   {$ENDIF}
 {$ENDIF}
@@ -10704,7 +10754,7 @@ begin
 	  {$IFDEF DELPHI6UP}
 {$IFNDEF PS_NOWIDESTRING}
         {$IFDEF DELPHI2009UP}
-        btUnicodeString: tbtUnicodeString(n.dta^) := GetUnicodeStrProp(TObject(FSelf), P.Ext1);
+        btUnicodeString: tbtUnicodeString(n.dta^) := {$IFDEF DELPHI_TOKYO_UP}GetStrProp{$ELSE}GetUnicodeStrProp{$ENDIF}(TObject(FSelf), P.Ext1);
         {$ELSE}
         btUnicodeString,
         {$ENDIF}
@@ -11348,7 +11398,7 @@ begin
  end;
  pp := fExceptionStack[fExceptionStack.Count-1];
  result := pp.ExceptionObject;
-end; 
+end;
 
 { TPSRuntimeClass }
 
@@ -11586,7 +11636,7 @@ end;
 
 {$ifdef CPUX64}
 
-{$DEFINE empty_methods_handler}
+{.$DEFINE empty_methods_handler}
 {$ENDIF}
 
 {$ifdef fpc}
@@ -11605,6 +11655,22 @@ end;
 function MyAllMethodsHandler2(Self: PScriptMethodInfo; const Stack: PPointer; _EDX, _ECX: Pointer): Integer; forward;
 
 procedure MyAllMethodsHandler;
+{$ifdef CPUX64}
+//  On entry:
+//  RCX = Self pointer
+//  RDX, R8, R9 = param1 .. param3
+//  STACK = param4... paramcount
+asm
+  PUSH  R9
+  MOV   R9,R8     // R9:=_ECX
+  MOV   R8,RDX    // R8:=_EDX
+  MOV   RDX, RSP  // RDX:=Stack
+  SUB   RSP, 20h
+  CALL MyAllMethodsHandler2
+  ADD   RSP, 20h  //Restore stack
+  POP   R9
+end;
+{$else}
 //  On entry:
 //     EAX = Self pointer
 //     EDX, ECX = param1 and param2
@@ -11623,6 +11689,7 @@ asm
   mov [esp], edx
   mov eax, ecx
 end;
+{$endif}
 
 function ResultAsRegister(b: TPSTypeRec): Boolean;
 begin
@@ -12728,11 +12795,8 @@ end;
 
 procedure TPSTypeRec_ProcPtr.CalcSize;
 begin
-  FRealSize := 2 * sizeof(Pointer) + Sizeof(Cardinal);
+  FRealSize := 3 * sizeof(Pointer);
 end;
 
 end.
-
-{$warnings on}
-{$hints on}
 

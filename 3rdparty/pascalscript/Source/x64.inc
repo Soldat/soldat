@@ -341,6 +341,9 @@ _XMM0: Double;
 {$IFNDEF WINDOWS}
   RegUsageFloat: Byte;
 {$ENDIF}
+{$IFDEF FPC}
+  IsConstructor,IsVirtualCons: Boolean;
+{$ENDIF}
   RegUsage: Byte;
   CallData: TPSList;
   I: Integer;
@@ -628,6 +631,19 @@ _XMM0: Double;
     Result := True;
   end;
 begin
+  {$IFDEF FPC}
+  if (Integer(CallingConv) and 128) <> 0 then begin
+    IsVirtualCons := true;
+    CAllingConv := TPSCallingConvention(Integer(CallingConv) and not 128);
+  end else
+    IsVirtualCons:= false;
+  if (Integer(CallingConv) and 64) <> 0 then begin
+    IsConstructor := true;
+    CAllingConv := TPSCallingConvention(Integer(CallingConv) and not 64);
+  end else
+    IsConstructor := false;
+  {$ENDIF}
+
   InnerfuseCall := False;
   if Address = nil then
     exit; // need address
@@ -650,6 +666,13 @@ begin
   FillChar(Registers, Sizeof(REgisters), 0);
     _RAX := 0;
     RegUsage := 0;
+    {$IF DEFINED (fpc) and (fpc_version >= 3)} // FIX FOR FPC constructor calls
+    if IsConstructor then begin
+      if not GetPtr(rp(Params[0])) then exit; // this goes first
+      DisposePPSVariantIFC(Params[0]);
+      Params.Delete(0);
+    end;
+    {$ENDIF}
     if assigned(_Self) then begin
       StoreReg(IPointer(_Self));
     end;

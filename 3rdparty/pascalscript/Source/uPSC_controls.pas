@@ -20,6 +20,9 @@ procedure SIRegisterTWinControl(Cl: TPSPascalCompiler);
 procedure SIRegisterTGraphicControl(cl: TPSPascalCompiler); 
 procedure SIRegisterTCustomControl(cl: TPSPascalCompiler); 
 procedure SIRegisterTDragObject(cl: TPSPascalCompiler);
+{$IFDEF DELPHI4UP}
+procedure SIRegisterTSizeConstraints(cl: TPSPascalCompiler);
+{$ENDIF}
 
 procedure SIRegister_Controls(Cl: TPSPascalCompiler);
 
@@ -149,8 +152,10 @@ begin
 
   cl.addTypeS('TAlign', '(alNone, alTop, alBottom, alLeft, alRight, alClient)');
 
-  cl.addTypeS('TAnchorKind', '(akTop, akLeft, akRight, akBottom)');
+  {$IFDEF DELPHI4UP}
+  cl.addTypeS('TAnchorKind', '(akLeft, akTop, akRight, akBottom)');
   cl.addTypeS('TAnchors','set of TAnchorKind');
+  {$ENDIF}
   cl.AddTypeS('TModalResult', 'Integer');
   cl.AddTypeS('TCursor', 'Integer');
   cl.AddTypeS('TPoint', 'record X,Y: LongInt; end;');
@@ -192,6 +197,9 @@ begin
 {$IFDEF DELPHI4UP}
   cl.AddConstantN('crSizeAll', 'Integer').Value.ts32 := -22;
 {$ENDIF}
+{$IFDEF DELPHI2009UP}
+  cl.AddTypeS('TBevelKind', '(bkNone, bkTile, bkSoft, bkFlat)');
+{$ENDIF}
 end;
 
 procedure SIRegisterTDragObject(cl: TPSPascalCompiler);
@@ -221,10 +229,27 @@ begin
   Cl.AddTypeS('TStartDragEvent', 'procedure (Sender: TObject; var DragObject: TDragObject)');
 end;
 
+{$IFDEF DELPHI4UP}
+procedure SIRegisterTSizeConstraints(cl: TPSPascalCompiler);
+begin
+  cl.AddTypeS('TConstraintSize', 'Integer');
+  with CL.AddClassN(CL.FindClass('TPersistent'),'TSizeConstraints') do
+  begin
+    RegisterProperty('MaxHeight', 'TConstraintSize', iptrw);
+    RegisterProperty('MaxWidth', 'TConstraintSize', iptrw);
+    RegisterProperty('MinHeight', 'TConstraintSize', iptrw);
+    RegisterProperty('MinWidth', 'TConstraintSize', iptrw);
+  end;
+end;
+{$ENDIF}
+
 procedure SIRegister_Controls(Cl: TPSPascalCompiler);
 begin
   SIRegister_Controls_TypesAndConsts(cl);
   SIRegisterTDragObject(cl);
+{$IFDEF DELPHI4UP}
+  SIRegisterTSizeConstraints(cl);
+{$ENDIF}
   SIRegisterTControl(Cl);
   SIRegisterTWinControl(Cl);
   SIRegisterTGraphicControl(cl);

@@ -21,7 +21,7 @@ procedure RIRegister_Graphics(Cl: TPSRuntimeClassImporter; Streams: Boolean);
 implementation
 {$IFNDEF FPC}
 uses
-  Classes{$IFDEF CLX}, QGraphics{$ELSE}, Windows, Graphics{$ENDIF};
+  Classes{$IFDEF CLX}, QGraphics{$ELSE}, Windows, Graphics{$ENDIF} {$IFDEF DELPHI_TOKYO_UP}, UITypes {$ENDIF};
 {$ELSE}
 uses
   Classes, Graphics,LCLType;

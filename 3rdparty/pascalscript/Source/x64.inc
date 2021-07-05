@@ -647,8 +647,10 @@ _XMM0: Double;
             StoreStack(p^, Pointersize2);
             FreeMem(p);
             // @SoldatPatch
+            {$IFDEF WINDOWS}
             if RegUsage < 4 then
               Registers.Patch_btProcPtr := True;
+            {$ENDIF}
 	    {$ENDIF}
           end;
 
@@ -662,7 +664,9 @@ _XMM0: Double;
   end;
 begin
   // @SoldatPatch
+  {$IFDEF WINDOWS}
   Registers.Patch_btProcPtr := False;
+  {$ENDIF}
   {$IFDEF FPC}
   if (Integer(CallingConv) and 128) <> 0 then begin
     IsVirtualCons := true;

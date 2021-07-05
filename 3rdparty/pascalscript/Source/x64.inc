@@ -25,6 +25,8 @@ type
     Stack: Pointer;        // 56
     Items: {$IFDEF FPC}PtrUInt{$ELSE}IntPtr{$ENDIF}; // 64
     SingleBits: Integer; // 72
+    // @SoldatPatch
+    Patch_btProcPtr: Boolean;  // 76
   end;
 
 procedure x64call(
@@ -61,6 +63,17 @@ asm
   push [rdx]
 {$ENDIF}
   dec rcx
+  // @SoldatPatch
+  or rcx, rcx
+  jnz @next
+@Patch_RegisterEventPropertyHelper:
+  cmp byte ptr [rax+76], 0  // Patch_btProcPtr
+  jz @next
+  push rbx
+  lea rbx, [rsp+8]   // load address of previous pushed item
+  mov [rax+8], rbx   // store the address to be invoked by call rax later
+  pop rbx
+@next:
   sub rdx,8
 @compareitems:
   or rcx, rcx
@@ -633,6 +646,9 @@ _XMM0: Double;
             TMethod(p^) := MKMethod(Self, Longint(FVar.Dta^));
             StoreStack(p^, Pointersize2);
             FreeMem(p);
+            // @SoldatPatch
+            if RegUsage < 4 then
+              Registers.Patch_btProcPtr := True;
 	    {$ENDIF}
           end;
 
@@ -645,6 +661,8 @@ _XMM0: Double;
     Result := True;
   end;
 begin
+  // @SoldatPatch
+  Registers.Patch_btProcPtr := False;
   {$IFDEF FPC}
   if (Integer(CallingConv) and 128) <> 0 then begin
     IsVirtualCons := true;

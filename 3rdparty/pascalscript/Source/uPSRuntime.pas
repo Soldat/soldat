@@ -11770,7 +11770,7 @@ end;
 procedure PutOnFPUStackExtended(ft: extended);
 asm
 //  fstp tbyte ptr [ft]
-  fld tbyte ptr [ft]
+  //fld tbyte ptr [ft]
 
 end;
 

@@ -103,7 +103,12 @@ begin
       begin
         // don't pass an empty filename to LoadLibrary, just treat it as uncallable
         p.Ext2 := Pointer(1);
+        // @SoldatPatch
+        {$IFDEF WINDOWS}
         ErrorCode := ERROR_MOD_NOT_FOUND;
+        {$ELSE}
+        ErrorCode := 126;
+        {$ENDIF}
         Result := False;
         exit;
       end;
@@ -134,7 +139,10 @@ begin
       if dllhandle = 0 then
       begin
         p.Ext2 := Pointer(1);
+        // @SoldatPatch(pewpew): Probably this should use dlerror on non-windows
+        {$IFDEF WINDOWS}
         ErrorCode := GetLastError;
+        {$ENDIF}
         Result := False;
         exit;
       end;
@@ -153,7 +161,10 @@ begin
   if p.Ext1 = nil then
   begin
     p.Ext2 := Pointer(1);
+    // @SoldatPatch(pewpew): Probably this should use dlerror on non-windows
+    {$IFDEF WINDOWS}
     ErrorCode := GetLastError;
+    {$ENDIF}
     Result := false;
     exit;
   end;

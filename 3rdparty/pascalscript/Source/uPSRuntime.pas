@@ -11640,7 +11640,8 @@ end;
 {$ENDIF}
 
 {$ifdef fpc}
-  {$if defined(cpupowerpc) or defined(cpuarm) or defined(cpu64)}
+  // @SoldatPatch
+  {$if defined(cpupowerpc) or defined(cpuarm)}
     {$define empty_methods_handler}
   {$ifend}
 {$endif}

@@ -489,6 +489,10 @@ _XMM0: Double;
     //UseReg: Boolean;
     //tempstr: tbtstring;
     p: Pointer;
+    // @SoldatPatch
+    {$IFDEF LINUX}
+    ip: IPointer;
+    {$ENDIF}
   begin
     Result := False;
     if FVar = nil then exit;
@@ -616,10 +620,20 @@ _XMM0: Double;
 
         btProcPtr:
           begin
+	    // @SoldatPatch
+	    {$IFDEF LINUX}
+	    // Code pointer
+	    ip := IPointer(@MyAllMethodsHandler);
+	    StoreReg(ip);
+	    // Data pointer
+	    ip := IPointer(GetMethodInfoRec(Self, LongInt(FVar.Dta^)));
+	    StoreReg(ip);
+	    {$ELSE}
             GetMem(p, PointerSize2);
             TMethod(p^) := MKMethod(Self, Longint(FVar.Dta^));
             StoreStack(p^, Pointersize2);
             FreeMem(p);
+	    {$ENDIF}
           end;
 
         bts64:

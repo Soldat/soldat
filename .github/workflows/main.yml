@@ -1,0 +1,121 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # Otherwise `git describe --tags` doesn't work
+
+      - uses: actions/checkout@v2
+        with:
+          repository: Soldat/base
+          path: soldat-base
+
+      - name: Install dependencies
+        run: sudo apt-get install -yq fpc libsdl2-dev libopenal-dev libfreetype6-dev libphysfs-dev
+
+      # https://github.com/ValveSoftware/GameNetworkingSockets/blob/master/BUILDING.md
+      - name: Install GameNetworkingSockets
+        run: |
+          sudo apt-get install -yq libssl-dev libprotobuf-dev protobuf-compiler ninja-build
+          git clone -q --depth 1 --branch v1.2.0 https://github.com/ValveSoftware/GameNetworkingSockets.git
+          cd GameNetworkingSockets
+          mkdir build
+          cd build
+          cmake -G Ninja ..
+          ninja
+          cp bin/libGameNetworkingSockets.so ../../shared/libs/GameNetworkingSockets/
+
+      - name: Build server
+        run: |
+          mkdir -p server/build/linux
+          ( cd server && make )
+
+      - name: Build client
+        run: |
+          mkdir -p client/build/linux
+          ( cd client/libs/stb && make )
+          ( cd client && make )
+
+      - name: Build resources
+        run: ( cd soldat-base && bash create_smod.sh )
+
+      - name: Create AppImage
+        run: |
+          # Build AppDir
+          install -Dm 755 client/build/soldat_* AppDir/soldat
+          install -Dm 755 server/build/soldatserver_* AppDir/soldatserver
+          install -Dm 644 -t AppDir soldat-base/soldat.smod
+          install -Dm 644 -t AppDir soldat-base/client/play-regular.ttf
+          install -Dm 755 -t AppDir/lib client/build/libstb.so
+          install -Dm 755 -t AppDir/lib shared/libs/GameNetworkingSockets/libGameNetworkingSockets.so
+          convert client/media/soldat.ico soldat.png
+          install -Dm 644 soldat-0.png AppDir/soldat.png
+
+          # Generate desktop file
+          cat <<EOF > AppDir/soldat.desktop
+          [Desktop Entry]
+          Type=Application
+          Categories=Game
+          Name=Soldat
+          Exec=soldat -joinurl %u
+          Icon=soldat
+          StartupNotify=false
+          Terminal=false
+          MimeType=x-scheme-handler/soldat;
+          EOF
+
+          # Generate main run script
+          cat <<EOF > AppDir/AppRun
+          #!/usr/bin/env bash
+          cd "\$(dirname "\$0")"
+          export LD_LIBRARY_PATH=lib
+          if [ "\$1" == "server" ]; then
+            shift
+            ./soldatserver -fs_userpath ~/.local/share/Soldat/Soldat \$@
+          else
+            ./soldat -fs_portable 0 \$@
+          fi
+          EOF
+          chmod +x AppDir/AppRun
+
+          # Download list of libraries that shouldn't be embedded in the package
+          lib_blacklist=$(curl -s https://raw.githubusercontent.com/AppImage/pkg2appimage/master/excludelist | sed "s/#.*//" | egrep -v '^$')
+
+          # Copy dependencies inside the package
+          LD_LIBRARY_PATH=AppDir/lib find AppDir -type f \( -executable -or -name "*.so*" \) -exec ldd {} + \
+            | grep "=> /" | awk '{print $3}' | sort -u \
+            | egrep -v "(${lib_blacklist//$'\n'/|})" \
+            | xargs install -Dm 644 -t AppDir/lib
+
+          # Build AppImage
+          ARCH=$(uname -m)
+          VERSION=$(git describe --tags --always)
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-${ARCH}.AppImage
+          chmod +x appimagetool-${ARCH}.AppImage
+          ./appimagetool-${ARCH}.AppImage AppDir "Soldat-${VERSION}-${ARCH}.AppImage"
+
+      - name: Archive AppImage
+        uses: actions/upload-artifact@v2
+        with:
+          name: AppImage
+          path: Soldat-*.AppImage
+
+      - name: Create release and upload artifacts
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          wget -q https://github.com/TheAssassin/pyuploadtool/releases/download/continuous/pyuploadtool-x86_64.AppImage
+          chmod +x pyuploadtool-x86_64.AppImage
+          ./pyuploadtool-x86_64.AppImage Soldat-*.AppImage

@@ -148,6 +148,9 @@ function IsTeamGame(): Boolean;
 {$IFNDEF SERVER}
 function IsPointOnScreen(Point: TVector2): Boolean;
 {$ENDIF}
+{$IFDEF SERVER}
+procedure ReloadMapsList(var AMapsList: TStrings);
+{$ENDIF}
 procedure ChangeMap;
 procedure SortPlayers;
 
@@ -509,6 +512,44 @@ begin
   end;
 end;
 
+{$IFDEF SERVER}
+procedure ReloadMapsList(var AMapsList: TStrings);
+var
+  i: Integer;
+  MapsListPath: String;
+begin
+  AMapsList.Clear;
+  MapsListPath := UserDirectory + 'configs/' + sv_maplist.Value;
+
+  if FileExists(MapsListPath) then
+  begin
+    AMapsList.LoadFromFile(MapsListPath);
+    i := 1;
+    while i < AMapsList.Count do
+    begin
+      if AMapsList[i] = '' then
+      begin
+        AMapsList.Delete(i);
+        Dec(i);
+      end;
+      Inc(i);
+    end;
+  end;
+
+  if AMapsList.Count = 0 then
+  begin
+    WriteLn('');
+    WriteLn('  No maps list found (adding default). ' +
+      'Please add maps in configs/mapslist.txt');
+    WriteLn('');
+    if not IsTeamGame then
+      AMapsList.Add('Arena')
+    else
+      AMapsList.Add('ctf_Ash');
+  end;
+end;
+{$ENDIF}
+
 procedure ChangeMap;
 var
   {$IFDEF SERVER}
@@ -524,22 +565,7 @@ begin
   a := Default(TVector2);
   try
     Debug('ChangeMap');
-    MapsList.Clear;
-
-    if FileExists(UserDirectory + sv_maplist.Value) then
-    begin
-      MapsList.LoadFromFile(UserDirectory + sv_maplist.Value);
-      i := 1;
-      while i < MapsList.Count do
-      begin
-        if MapsList[i] = '' then
-        begin
-          MapsList.Delete(i);
-          Dec(i);
-        end;
-        Inc(i);
-      end;
-    end;
+    ReloadMapsList(MapsList);
 
     for i := 1 to MAX_WAYPOINTS do
     begin

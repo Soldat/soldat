@@ -709,34 +709,7 @@ begin
 
   AddLineToLogFile(GameLog, 'Loading Maps List', ConsoleLogFileName);
   MapsList := TStringList.Create;
-  MapsList.Clear;
-
-  if FileExists(UserDirectory + 'configs/' + sv_maplist.Value) then
-  begin
-    MapsList.LoadFromFile(UserDirectory + 'configs/' + sv_maplist.Value);
-    i := 1;
-    while i < MapsList.Count do
-    begin
-      if MapsList[i] = '' then
-      begin
-        MapsList.Delete(i);
-        Dec(i);
-      end;
-      Inc(i);
-    end;
-  end;
-
-  if MapsList.Count = 0 then
-  begin
-    WriteLn('');
-    WriteLn('  No maps list found (adding default). ' +
-      'Please add maps in configs/mapslist.txt');
-    WriteLn('');
-    if not IsTeamGame then
-      MapsList.Add('Arena')
-    else
-      MapsList.Add('ctf_Ash');
-  end;
+  ReloadMapsList(MapsList);
 
   for i := 1 to MAX_SPRITES do
     for j := 1 to MAX_SPRITES do

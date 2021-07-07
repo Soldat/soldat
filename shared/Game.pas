@@ -593,6 +593,7 @@ begin
       if Sprite[i].Active and Sprite[i].IsNotSpectator() then
       begin
         RandomizeStart(SpriteParts.Pos[i], Sprite[i].Player.Team);
+        Sprite[i].DeadMeat := False;
         Sprite[i].Respawn;
         Sprite[i].Player.Kills := 0;
         Sprite[i].Player.Deaths := 0;

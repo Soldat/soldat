@@ -54,7 +54,6 @@ type
   TScriptUnitAPI = class(TScriptCore3API)
   private
     FUnit: TScriptUnit;
-    FScript: TScript;
   public
     constructor Create(Script: TScript);
     procedure CompilerRegister(Compiler: TPascalCompiler); override;
@@ -118,7 +117,7 @@ end;
 
 constructor TScriptUnitAPI.Create(Script: TScript);
 begin
-  Self.FScript := Script;
+  inherited Create(Script);
   Self.FUnit := TScriptUnit.Create(Script);
 end;
 

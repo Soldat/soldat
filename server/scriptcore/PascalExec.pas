@@ -101,7 +101,10 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function CallFunction(FuncName: string; Parameters: array of Variant): Variant;
+    function CallFunction(FuncName: String; ProcNo: Cardinal; Parameters: array of Variant): Variant; overload;
+    function CallFunction(FuncName: string; Parameters: array of Variant): Variant; overload;
+    // NOTE(pewpew): CallEvent is a hack to bypass MyAllEventsHandler in PascalScript.
+    function CallEvent(const Event; Params: array of Variant): Variant;
     procedure Execute;
     function GetErrorString: string; virtual;
     function GetErrorString2(Param: TPSError; const Message: string): string;
@@ -257,14 +260,12 @@ begin
     Self.FExec.RunProcP([], Self.FFinalizationProcNums[I]);
 end;
 
-function TPascalExec.CallFunction(FuncName: string;
-  Parameters: array of Variant): Variant;
+function TPascalExec.CallFunction(FuncName: String; ProcNo: Cardinal;
+  Parameters: array of Variant): Variant; overload;
 var
-  ProcNo: Cardinal;
   i: Shortint;
   ApiObj: IRuntimeAPI;
 begin
-  ProcNo := Self.FExec.GetProc(FuncName);
   if ProcNo = uPSRuntime.InvalidVal then
     raise TProcNotFoundException.Create(FuncName + ' not found');
   if Self.FExec.GetProcNo(ProcNo).ClassType <> TPSInternalProcRec then
@@ -284,6 +285,32 @@ begin
       ApiObj.AfterExecute(Self);
     end;
   end;
+end;
+
+function TPascalExec.CallFunction(FuncName: string;
+  Parameters: array of Variant): Variant; overload;
+var
+  ProcNo: Cardinal;
+begin
+  ProcNo := Self.FExec.GetProc(FuncName);
+  Result := CallFunction(FuncName, ProcNo, Parameters);
+end;
+
+function TPascalExec.CallEvent(const Event; Params: array of Variant): Variant;
+var
+  ProcNo: Cardinal;
+  Func: TAbstractFunction;
+  EventName: String;
+begin
+  ProcNo := PScriptMethodInfo(TMethod(Event).Data).ProcNo;
+
+  Func := Self.Exec.GetProcNo(ProcNo);
+  if Func is TScriptFunction then
+    EventName := TScriptFunction(Func).ExportName
+  else
+    EventName := TExternalFunction(Func).Name;
+
+  Result := CallFunction(EventName, ProcNo, Params);
 end;
 
 procedure TPascalExec.Execute();

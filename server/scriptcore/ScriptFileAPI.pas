@@ -41,6 +41,10 @@ type
   TMyStringList = class(TStringList)
   private
     FAPI: TScriptFileAPI;
+    FOnChange: TNotifyEvent;
+    FOnChanging: TNotifyEvent;
+    procedure MyOnChange(Sender: TObject);
+    procedure MyOnChanging(Sender: TObject);
   public
     constructor Create(API: TScriptFileAPI);
     procedure LoadFromFile(const FileName: string); override;
@@ -77,7 +81,6 @@ type
   // ... some day
   TScriptFileAPI = class(TScriptCore3API)
   private
-    FScript: TScript;
     FFile: TScriptFile;
     function GetSandboxLevel: Byte;
     function GetAllowIniEdit: Boolean;
@@ -165,6 +168,20 @@ constructor TMyStringList.Create(API: TScriptFileAPI);
 begin
   inherited Create;
   Self.FAPI := API;
+  Self.OnChange := Self.MyOnChange;
+  Self.OnChanging := Self.MyOnChanging;
+end;
+
+procedure TMyStringList.MyOnChange(Sender: TObject);
+begin
+  if Assigned(Self.FOnChange) then
+    Self.FAPI.CallEvent(FOnChange, [PtrUInt(Sender)]);
+end;
+
+procedure TMyStringList.MyOnChanging(Sender: TObject);
+begin
+  if Assigned(Self.FOnChanging) then
+    Self.FAPI.CallEvent(FOnChanging, [PtrUInt(Sender)]);
 end;
 
 procedure TMyStringList.LoadFromFile(const FileName: string);
@@ -331,7 +348,7 @@ end;
 
 constructor TScriptFileAPI.Create(Script: TScript);
 begin
-  Self.FScript := Script;
+  inherited Create(Script);
   Self.FFile := TScriptFile.Create(Self);
 end;
 
@@ -561,22 +578,22 @@ end;
 
 procedure OnChangeReadHelper(Self: TMyStringList; var Result: TNotifyEvent);
 begin
-  Result := Self.OnChange;
+  Result := Self.FOnChange;
 end;
 
 procedure OnChangeWriteHelper(Self: TMyStringList; const Result: TNotifyEvent);
 begin
-  Self.OnChange := Result;
+  Self.FOnChange := Result;
 end;
 
 procedure OnChangingReadHelper(Self: TMyStringList; var Result: TNotifyEvent);
 begin
-  Result := Self.OnChanging;
+  Result := Self.FOnChanging;
 end;
 
 procedure OnChangingWriteHelper(Self: TMyStringList; const Result: TNotifyEvent);
 begin
-  Self.OnChanging := Result;
+  Self.FOnChanging := Result;
 end;
 
 

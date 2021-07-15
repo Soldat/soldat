@@ -1101,6 +1101,14 @@ function MakeWString(const s: tbtunicodestring): tbtstring;
 function IDispatchInvoke(Self: IDispatch; PropertySet: Boolean; const Name: tbtString; const Par: array of Variant): Variant;
 {$ENDIF}
 
+// @SoldatPatch: Make TScriptMethodInfo public.
+type
+  PScriptMethodInfo = ^TScriptMethodInfo;
+  TScriptMethodInfo = record
+    Se: TPSExec;
+    ProcNo: Cardinal;
+  end;
+
 
 implementation
 uses
@@ -4583,7 +4591,8 @@ begin
             TObject(Dest^) := TObject(Src^)
           else
           if srctype.BaseType = btVariant then
-            TbtU32(Dest^) := Variant(Src^)
+            // @SoldatPatch
+            IPointer(Dest^) := Variant(Src^)
           else
           // nx change start
           if (srctype.BaseType in [btS32, btU32]) then
@@ -9480,6 +9489,9 @@ function IntPIFVariantToVariant(Src: pointer; aType: TPSTypeRec; var Dest: Varia
     end;
     result := true;
   end;
+// @SoldatPatch
+var
+  ip: IPointer;
 begin
   if aType = nil then
   begin
@@ -9528,6 +9540,11 @@ begin
     btWideChar: Dest := tbtwidestring(tbtwidechar(src^));
     btUnicodeString: Dest := tbtUnicodeString(src^);
   {$ENDIF}
+    // @SoldatPatch
+    btRecord: begin
+      ip := Dest;
+      CopyRecordContents(Pointer(ip), Src, TPSTypeRec_Record(aType));
+    end;
   else
     begin
       Result := False;
@@ -9889,14 +9906,6 @@ end;
   {$ENDIF}
   {$ENDIF}
 {$ENDIF}
-
-type
-  PScriptMethodInfo = ^TScriptMethodInfo;
-  TScriptMethodInfo = record
-    Se: TPSExec;
-    ProcNo: Cardinal;
-  end;
-
 
 function MkMethod(FSE: TPSExec; No: Cardinal): TMethod;
 begin

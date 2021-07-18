@@ -706,7 +706,6 @@ begin
     try
       if Assigned(Self.FGame.Game.Teams[Team].OnBeforeJoin) then
       begin
-        // @NoCheckin: get right constant...
         if (Id < 1) or (Id > MAX_PLAYERS) then
           PlayerObj := nil
         else

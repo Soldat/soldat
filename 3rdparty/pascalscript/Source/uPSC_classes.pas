@@ -137,12 +137,18 @@ begin
     IsAbstract := True;
     RegisterMethod('function Read(Buffer: string; Count: LongInt): LongInt');
     RegisterMethod('function Write(Buffer: string; Count: LongInt): LongInt');
+    {$IFDEF DELPHI_TOKYO_UP}
+    {$IFNDEF PS_NOINT64}
+    RegisterMethod('function Seek(Offset: Int64; Origin: Word): Int64');
+    {$ENDIF}
+    {$ELSE}
     RegisterMethod('function Seek(Offset: LongInt; Origin: Word): LongInt');
+    {$ENDIF}
     RegisterMethod('procedure ReadBuffer(Buffer: string; Count: LongInt)');
     RegisterMethod('procedure WriteBuffer(Buffer: string; Count: LongInt)');
     {$IFDEF DELPHI4UP}
     {$IFNDEF PS_NOINT64}
-    RegisterMethod('function CopyFrom(Source: TStream; Count: Int64): LongInt');
+    RegisterMethod('function CopyFrom(Source: TStream; Count: Int64): Int64');
     {$ENDIF}
     {$ELSE}
     RegisterMethod('function CopyFrom(Source: TStream; Count: Integer): LongInt');

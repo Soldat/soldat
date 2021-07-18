@@ -24,13 +24,13 @@ uses
   procedure UpdateHWBanList;
 
 type
-  TBanIP = record
+  TBanIP = packed record
     IP: string;
     Time: Integer;
     Reason: string;
   end;
 
-  TBanHW = record
+  TBanHW = packed record
     HW: string;
     Time: Integer;
     Reason: string;

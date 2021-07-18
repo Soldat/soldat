@@ -25,6 +25,8 @@ type
     Stack: Pointer;        // 56
     Items: {$IFDEF FPC}PtrUInt{$ELSE}IntPtr{$ENDIF}; // 64
     SingleBits: Integer; // 72
+    // @SoldatPatch
+    Patch_btProcPtr: Boolean;  // 76
   end;
 
 procedure x64call(
@@ -61,6 +63,17 @@ asm
   push [rdx]
 {$ENDIF}
   dec rcx
+  // @SoldatPatch
+  or rcx, rcx
+  jnz @next
+@Patch_RegisterEventPropertyHelper:
+  cmp byte ptr [rax+76], 0  // Patch_btProcPtr
+  jz @next
+  push rbx
+  lea rbx, [rsp+8]   // load address of previous pushed item
+  mov [rax+8], rbx   // store the address to be invoked by call rax later
+  pop rbx
+@next:
   sub rdx,8
 @compareitems:
   or rcx, rcx
@@ -341,6 +354,9 @@ _XMM0: Double;
 {$IFNDEF WINDOWS}
   RegUsageFloat: Byte;
 {$ENDIF}
+{$IFDEF FPC}
+  IsConstructor,IsVirtualCons: Boolean;
+{$ENDIF}
   RegUsage: Byte;
   CallData: TPSList;
   I: Integer;
@@ -486,6 +502,10 @@ _XMM0: Double;
     //UseReg: Boolean;
     //tempstr: tbtstring;
     p: Pointer;
+    // @SoldatPatch
+    {$IFDEF LINUX}
+    ip: IPointer;
+    {$ENDIF}
   begin
     Result := False;
     if FVar = nil then exit;
@@ -613,10 +633,25 @@ _XMM0: Double;
 
         btProcPtr:
           begin
+	    // @SoldatPatch
+	    {$IFDEF LINUX}
+	    // Code pointer
+	    ip := IPointer(@MyAllMethodsHandler);
+	    StoreReg(ip);
+	    // Data pointer
+	    ip := IPointer(GetMethodInfoRec(Self, LongInt(FVar.Dta^)));
+	    StoreReg(ip);
+	    {$ELSE}
             GetMem(p, PointerSize2);
             TMethod(p^) := MKMethod(Self, Longint(FVar.Dta^));
             StoreStack(p^, Pointersize2);
             FreeMem(p);
+            // @SoldatPatch
+            {$IFDEF WINDOWS}
+            if RegUsage < 4 then
+              Registers.Patch_btProcPtr := True;
+            {$ENDIF}
+	    {$ENDIF}
           end;
 
         bts64:
@@ -628,6 +663,23 @@ _XMM0: Double;
     Result := True;
   end;
 begin
+  // @SoldatPatch
+  {$IFDEF WINDOWS}
+  Registers.Patch_btProcPtr := False;
+  {$ENDIF}
+  {$IFDEF FPC}
+  if (Integer(CallingConv) and 128) <> 0 then begin
+    IsVirtualCons := true;
+    CAllingConv := TPSCallingConvention(Integer(CallingConv) and not 128);
+  end else
+    IsVirtualCons:= false;
+  if (Integer(CallingConv) and 64) <> 0 then begin
+    IsConstructor := true;
+    CAllingConv := TPSCallingConvention(Integer(CallingConv) and not 64);
+  end else
+    IsConstructor := false;
+  {$ENDIF}
+
   InnerfuseCall := False;
   if Address = nil then
     exit; // need address
@@ -650,6 +702,13 @@ begin
   FillChar(Registers, Sizeof(REgisters), 0);
     _RAX := 0;
     RegUsage := 0;
+    {$IF DEFINED (fpc) and (fpc_version >= 3)} // FIX FOR FPC constructor calls
+    if IsConstructor then begin
+      if not GetPtr(rp(Params[0])) then exit; // this goes first
+      DisposePPSVariantIFC(Params[0]);
+      Params.Delete(0);
+    end;
+    {$ENDIF}
     if assigned(_Self) then begin
       StoreReg(IPointer(_Self));
     end;

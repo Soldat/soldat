@@ -26,6 +26,9 @@ begin
   with Cl.AddClassN(cl.FindClass('TGraphicControl'), 'TSpeedButton') do
   begin
     RegisterProperty('AllowAllUp', 'Boolean', iptrw);
+    {$IFDEF DELPHI4UP}
+    RegisterProperty('Anchors', 'TAnchors', iptrw);
+    {$ENDIF}
     RegisterProperty('GroupIndex', 'Integer', iptrw);
     RegisterProperty('Down', 'Boolean', iptrw);
     RegisterProperty('Caption', 'string', iptrw);
@@ -49,6 +52,9 @@ procedure SIRegisterTBITBTN(Cl: TPSPascalCompiler);
 begin
   with Cl.AddClassN(cl.FindClass('TButton'), 'TBitBtn') do
   begin
+    {$IFDEF DELPHI4UP}
+    RegisterProperty('Anchors', 'TAnchors', iptrw);
+    {$ENDIF}
     RegisterProperty('Glyph', 'TBitmap', iptrw);
     RegisterProperty('Kind', 'TBitBtnKind', iptrw);
     RegisterProperty('Layout', 'TButtonLayout', iptrw);

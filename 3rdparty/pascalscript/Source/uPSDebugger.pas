@@ -1,6 +1,5 @@
 
 unit uPSDebugger;
-{$hints off}
 {$I PascalScript.inc}
 interface
 uses
@@ -57,7 +56,9 @@ type
     function GetProcVar(I: Cardinal): PIfVariant;
 	
     function GetProcParam(I: Cardinal): PIfVariant;
-    
+  
+    function GetCallStack(var Count: Cardinal): tbtString;
+  
     constructor Create;
 	
     destructor Destroy; override;
@@ -501,6 +502,81 @@ begin
   end;
 end;
 
+function TPSCustomDebugExec.GetCallStack(var Count: Cardinal): tbtString;
+
+  function GetProcIndex(Proc: TPSInternalProcRec): Cardinal;
+  var
+    I: Longint;
+  begin
+    for I := 0 to FProcs.Count -1 do
+    begin
+      if FProcs[I] = Proc then
+      begin
+        Result := I;
+        Exit;
+      end;
+    end;
+    Result := Cardinal(-1);
+  end;
+
+  function ParseParams(ParamList: TIfStringList; StackBase: Cardinal): tbtString;
+  var
+    I: Integer;
+  begin
+    Result := '';
+    if ParamList.Count > 0 then
+    for I := 0 to ParamList.Count do
+      if (ParamList.Items[I] = 'Result') or (ParamList.Items[I] = '') then
+        Continue
+      else
+        Result:= Result + ParamList.Items[I] + ': ' +
+                 PSVariantToString(NewTPSVariantIFC(FStack[Cardinal(Longint(StackBase) - Longint(I) - 1)], False), '') + '; ';
+    if Result <> '' then
+      Result := tbtString(String(Result).Remove(Length(Result)-2));
+  end;
+
+var
+  StackBase: Cardinal;
+  DebugProc: PFunctionInfo;
+  Name: tbtString;
+  I: Integer;
+begin
+  Result := ProcNames[GetProcIndex(FCurrProc)] + '(' +
+            ParseParams(GetCurrentProcParams, FCurrStackBase) + ')';
+  Count := 1;
+
+  StackBase := FCurrStackBase;
+
+  while StackBase > 0 do
+  begin
+    DebugProc := nil;
+
+    for I := 0 to FDebugDataForProcs.Count -1 do
+      if PFunctionInfo(FDebugDataForProcs[I])^.Func = PPSVariantReturnAddress(FStack[StackBase]).Addr.ProcNo then
+      begin
+        DebugProc := FDebugDataForProcs[I];
+        Break;
+      end;
+
+    I := GetProcIndex(PPSVariantReturnAddress(FStack[StackBase]).Addr.ProcNo);
+    if I <= 0 then
+      if Assigned(PPSVariantReturnAddress(FStack[StackBase]).Addr.ProcNo) then
+        Name := PPSVariantReturnAddress(FStack[StackBase]).Addr.ProcNo.ExportName
+      else
+        Exit
+    else
+      Name := ProcNames[I];
+
+    StackBase := PPSVariantReturnAddress(FStack[StackBase]).Addr.StackBase;
+    if Assigned(DebugProc) then
+      Result := Result + #13#10 + Name + '(' + ParseParams(DebugProc.FParamNames, StackBase) + ')'
+    else
+      Result := Result + #13#10 + Name + '(???)';
+
+    Inc(Count);
+  end;
+end;
+
 { TPSDebugExec }
 procedure TPSDebugExec.ClearDebug;
 begin
@@ -653,5 +729,3 @@ begin
 end;
 
 end.
-
-{$hints on}

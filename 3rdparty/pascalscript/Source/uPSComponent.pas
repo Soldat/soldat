@@ -1,11 +1,12 @@
-unit uPSComponent;   
-{$hints off}
+unit uPSComponent;
 {$I PascalScript.inc}
 interface
 
 uses
   SysUtils, Classes, uPSRuntime, uPSDebugger, uPSUtils,
-  uPSCompiler, uPSC_dll, uPSR_dll, uPSPreProcessor;
+  uPSCompiler,
+  {$IF DEFINED (MSWINDOWS) OR Defined (UNIX) OR Defined (fpc)} uPSC_dll, uPSR_dll,{$IFEND}
+  uPSPreProcessor;
 
 const
   {alias to @link(ifps3.cdRegister)}
@@ -23,8 +24,7 @@ type
   TDelphiCallingConvention = uPSRuntime.TPSCallingConvention;
   {Alias to @link(ifps3.TPSRuntimeClassImporter)}
   TPSRuntimeClassImporter = uPSRuntime.TPSRuntimeClassImporter;
-
-{$hints off}
+  
   TPSPlugin = class(TComponent)
   public
     procedure CompOnUses(CompExec: TPSScript); virtual;
@@ -358,6 +358,7 @@ type
     procedure ClearBreakPoints;
 
     function GetVarContents(const Name: tbtstring): tbtstring;
+	function GetVarValue(const Name: tbtstring): Pointer;	
   published
 
     property OnIdle: TNotifyEvent read FOnIdle write FOnIdle;
@@ -1148,12 +1149,17 @@ end;
 
 procedure TPSDllPlugin.CompOnUses;
 begin
+  CompExec.Comp.OnExternalProc := nil;
+  {$IF DEFINED (MSWINDOWS) OR Defined (UNIX) OR Defined (fpc)}
   CompExec.Comp.OnExternalProc := DllExternalProc;
+  {$IFEND}
 end;
 
 procedure TPSDllPlugin.ExecOnUses;
 begin
+  {$IF DEFINED (MSWINDOWS) OR Defined (UNIX) OR Defined (fpc)}
   RegisterDLLRuntime(CompExec.Exec);
+  {$IFEND}
 end;
 
 
@@ -1312,6 +1318,58 @@ begin
     Result := RPS_UnknownIdentifier
   else
     Result := PSVariantToString(NewTPSVariantIFC(pv, False), s);
+end;
+
+function TPSScriptDebugger.GetVarValue(const Name: tbtstring): Pointer;
+var
+  i: Longint;
+  pv: PIFVariant;
+  s1, s: tbtstring;
+begin
+  s := Uppercase(Name);
+  if pos('.', s) > 0 then
+  begin
+    s1 := copy(s,1,pos('.', s) -1);
+    delete(s,1,pos('.', Name));
+  end else begin
+    s1 := s;
+    s := '';
+  end;
+  pv := nil;
+  for i := 0 to Exec.CurrentProcVars.Count -1 do
+  begin
+    if Uppercase(Exec.CurrentProcVars[i]) =  s1 then
+    begin
+      pv := Exec.GetProcVar(i);
+      break;
+    end;
+  end;
+  if pv = nil then
+  begin
+    for i := 0 to Exec.CurrentProcParams.Count -1 do
+    begin
+      if Uppercase(Exec.CurrentProcParams[i]) =  s1 then
+      begin
+        pv := Exec.GetProcParam(i);
+        break;
+      end;
+    end;
+  end;
+  if pv = nil then
+  begin
+    for i := 0 to Exec.GlobalVarNames.Count -1 do
+    begin
+      if Uppercase(Exec.GlobalVarNames[i]) =  s1 then
+      begin
+        pv := Exec.GetGlobalVar(i);
+        break;
+      end;
+    end;
+  end;
+  if pv = nil then
+    Result := nil
+  else
+    Result := NewTPSVariantIFC(pv, False).Dta;
 end;
 
 function TPSScriptDebugger.HasBreakPoint(const Fn: tbtstring; Line: Integer): Boolean;
@@ -1512,5 +1570,3 @@ begin
 end;
 
 end.
-
-{$hints on}

@@ -1,6 +1,5 @@
 
 unit uPSPreProcessor;
-{$hints off}
 {$I PascalScript.inc}
 
 interface
@@ -214,11 +213,11 @@ const
 
   RPS_TooManyNestedInclude = 'Too many nested include files while processing ''%s'' from ''%s''';
   RPS_IncludeNotFound = 'Unable to find file ''%s'' used from ''%s''';
-  RPS_DefineTooManyParameters = 'Too many parameters at %d:%d';
-  RPS_NoIfdefForEndif = 'No IFDEF for ENDIF at %d:%d';
-  RPS_NoIfdefForElse = 'No IFDEF for ELSE at %d:%d';
-  RPS_ElseTwice = 'Can''t use ELSE twice at %d:%d';
-  RPS_UnknownCompilerDirective = 'Unknown compiler directives at %d:%d';
+  RPS_DefineTooManyParameters = 'Too many parameters in ''%s'' at %d:%d';
+  RPS_NoIfdefForEndif = 'No IFDEF for ENDIF in ''%s'' at %d:%d';
+  RPS_NoIfdefForElse = 'No IFDEF for ELSE in ''%s'' at %d:%d';
+  RPS_ElseTwice = 'Can''t use ELSE twice in ''%s'' at %d:%d';
+  RPS_UnknownCompilerDirective = 'Unknown compiler directives in ''%s'' at %d:%d';
   RPs_DefineNotClosed = 'Define not closed';
 
 { TPSLineInfoList }
@@ -281,7 +280,6 @@ begin
       Res.Pos := Pos;
       Res.Col := 1;
       Res.Row := 1;
-      LinePos := 0;
       for j := 0 to Item.LineOffsetCount -1 do
       begin
         if Pos >= Item.LineOffset[j] then
@@ -289,10 +287,10 @@ begin
           linepos := Item.LineOffset[j];
         end else
         begin
-          Res.Row := j; // j -1, but line counting starts at 1
-          Res.Col := pos - linepos + 1;
           Break;
         end;
+        Res.Row := j + 1; // line counting starts at 1
+        Res.Col := pos - linepos + 1;
       end;
       Result := True;
       exit;
@@ -632,27 +630,27 @@ begin
           begin
             if FDefineState.DoWrite then
             begin
-              if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
+              if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [FileName, Parser.Row, Parser.Col]);
               FCurrentDefines.Add(Uppercase(S));
             end;
           end else if (Name = 'UNDEF') then
           begin
             if FDefineState.DoWrite then
             begin
-              if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
+              if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [FileName, Parser.Row, Parser.Col]);
               i := FCurrentDefines.IndexOf(Uppercase(s));
               if i <> -1 then
                 FCurrentDefines.Delete(i);
             end;
           end else if (Name = 'IFDEF') then
           begin
-            if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
+            if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [FileName, Parser.Row, Parser.Col]);
             //JeromeWelsh - nesting fix
             ADoWrite := (FCurrentDefines.IndexOf(Uppercase(s)) >= 0) and FDefineState.DoWrite;
             FDefineState.Add.DoWrite := ADoWrite;
           end else if (Name = 'IFNDEF') then
           begin
-            if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
+            if pos(' ', s) <> 0 then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [FileName, Parser.Row, Parser.Col]);
             //JeromeWelsh - nesting fix
             ADoWrite := (FCurrentDefines.IndexOf(Uppercase(s)) < 0) and FDefineState.DoWrite;
             FDefineState.Add.DoWrite := ADoWrite;
@@ -661,16 +659,16 @@ begin
             //- jgv remove - borland use it (sysutils.pas)
             //- if s <> '' then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
             if FDefineState.Count = 0 then
-              raise EPSPreProcessor.CreateFmt(RPS_NoIfdefForEndif, [Parser.Row, Parser.Col]);
+              raise EPSPreProcessor.CreateFmt(RPS_NoIfdefForEndif, [FileName, Parser.Row, Parser.Col]);
             FDefineState.Delete(FDefineState.Count -1); // remove define from list
           end else if (Name = 'ELSE') then
           begin
-            if s<> '' then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [Parser.Row, Parser.Col]);
+            if s<> '' then raise EPSPreProcessor.CreateFmt(RPS_DefineTooManyParameters, [FileName, Parser.Row, Parser.Col]);
             if FDefineState.Count = 0 then
-              raise EPSPreProcessor.CreateFmt(RPS_NoIfdefForElse, [Parser.Row, Parser.Col]);
+              raise EPSPreProcessor.CreateFmt(RPS_NoIfdefForElse, [FileName, Parser.Row, Parser.Col]);
             ds := FDefineState[FDefineState.Count -1];
             if ds.InElse then
-              raise EPSPreProcessor.CreateFmt(RPS_ElseTwice, [Parser.Row, Parser.Col]);
+              raise EPSPreProcessor.CreateFmt(RPS_ElseTwice, [FileName, Parser.Row, Parser.Col]);
             ds.FInElse := True;
             //JeromeWelsh - nesting fix
             ds.DoWrite := not ds.DoWrite and FDefineState.DoPrevWrite;
@@ -684,7 +682,7 @@ begin
             If AppContinue then
             //-- end jgv
           
-              raise EPSPreProcessor.CreateFmt(RPS_UnknownCompilerDirective, [Parser.Row, Parser.Col]);
+              raise EPSPreProcessor.CreateFmt(RPS_UnknownCompilerDirective, [FileName, Parser.Row, Parser.Col]);
           end;
       end;
 
@@ -800,6 +798,4 @@ begin
   else Result := TPSDefineState(FItems[FItems.Count -2]).DoWrite;
 end;
 
-end.
-
-{$hints on}
+end.

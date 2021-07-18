@@ -25,7 +25,7 @@
     $0007D0B4  TPSPASCALCOMPILER__COMPILE,  line 11704 of upscompiler.pas
 
   you can fix this by using the "unaligned" keyword around the pointer operation.
-  search for occurances of "unaligned" to see how this is done,
+  search for occurrences of "unaligned" to see how this is done,
   (use $ifdef FPC_REQUIRES_PROPER_ALIGNMENT).
 
   for more information, visit:

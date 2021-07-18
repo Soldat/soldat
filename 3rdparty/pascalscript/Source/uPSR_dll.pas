@@ -1,5 +1,4 @@
 unit uPSR_dll;
-{$hints off}
 
 {$I PascalScript.inc}
 interface
@@ -11,6 +10,7 @@ procedure RegisterDLLRuntimeEx(Caller: TPSExec; AddDllProcImport, RegisterUnload
 
 function ProcessDllImport(Caller: TPSExec; P: TPSExternalProcRec): Boolean;
 function ProcessDllImportEx(Caller: TPSExec; P: TPSExternalProcRec; ForceDelayLoad: Boolean): Boolean;
+function ProcessDllImportEx2(Caller: TPSExec; P: TPSExternalProcRec; ForceDelayLoad: Boolean; var DelayLoad: Boolean; var ErrorCode: LongInt): Boolean;
 procedure UnloadDLL(Caller: TPSExec; const sname: tbtstring);
 function UnloadProc(Caller: TPSExec; p: TPSExternalProcRec; Global, Stack: TPSStack): Boolean;
 
@@ -74,7 +74,7 @@ begin
   Dispose(p);
 end;
 
-function LoadDll(Caller: TPSExec; P: TPSExternalProcRec): Boolean;
+function LoadDll(Caller: TPSExec; P: TPSExternalProcRec; var ErrorCode: LongInt): Boolean;
 var
   s, s2, s3: tbtstring;
   h, i: Longint;
@@ -103,6 +103,12 @@ begin
       begin
         // don't pass an empty filename to LoadLibrary, just treat it as uncallable
         p.Ext2 := Pointer(1);
+        // @SoldatPatch
+        {$IFDEF WINDOWS}
+        ErrorCode := ERROR_MOD_NOT_FOUND;
+        {$ELSE}
+        ErrorCode := 126;
+        {$ENDIF}
         Result := False;
         exit;
       end;
@@ -133,6 +139,10 @@ begin
       if dllhandle = 0 then
       begin
         p.Ext2 := Pointer(1);
+        // @SoldatPatch(pewpew): Probably this should use dlerror on non-windows
+        {$IFDEF WINDOWS}
+        ErrorCode := GetLastError;
+        {$ENDIF}
         Result := False;
         exit;
       end;
@@ -151,6 +161,10 @@ begin
   if p.Ext1 = nil then
   begin
     p.Ext2 := Pointer(1);
+    // @SoldatPatch(pewpew): Probably this should use dlerror on non-windows
+    {$IFDEF WINDOWS}
+    ErrorCode := GetLastError;
+    {$ENDIF}
     Result := false;
     exit;
   end;
@@ -167,6 +181,7 @@ var
   CurrStack: Cardinal;
   cc: TPSCallingConvention;
   s: tbtstring;
+  Dummy: LongInt;
 begin
   if p.Ext2 <> nil then // error
   begin
@@ -175,7 +190,7 @@ begin
   end;
   if p.Ext1 = nil then
   begin
-    if not LoadDll(Caller, P) then
+    if not LoadDll(Caller, P, Dummy) then
     begin
       Result := false;
       exit;
@@ -226,7 +241,14 @@ end;
 
 function ProcessDllImportEx(Caller: TPSExec; P: TPSExternalProcRec; ForceDelayLoad: Boolean): Boolean;
 var
-  DelayLoad: Boolean;
+  Dummy1: Boolean;
+  Dummy2: LongInt;
+begin
+  Result := ProcessDllImportEx2(Caller, P, ForceDelayLoad, Dummy1, Dummy2);
+end;
+
+function ProcessDllImportEx2(Caller: TPSExec; P: TPSExternalProcRec; ForceDelayLoad: Boolean; var DelayLoad: Boolean; var ErrorCode: LongInt): Boolean;
+var
   s: tbtstring;
 begin
   if not ForceDelayLoad then begin
@@ -242,7 +264,7 @@ begin
     Result := True;
   end else begin
     p.ProcPtr := DllProc;
-    Result := LoadDll(Caller, p);
+    Result := LoadDll(Caller, p, ErrorCode);
   end;
 end;
 
@@ -307,6 +329,3 @@ begin
 end;
 
 end.
-
-{$hints on}
-

@@ -178,7 +178,6 @@ type
   TScriptGameAPI = class(TScriptCore3API)
   private
     FGame: TScriptGame;
-    FScript: TScript;
   public
     constructor Create(ScriptCore3: TScript);
     procedure CompilerRegister(Compiler: TPascalCompiler); override;
@@ -907,7 +906,7 @@ end;
 
 constructor TScriptGameAPI.Create(ScriptCore3: TScript);
 begin
-  Self.FScript := ScriptCore3;
+  inherited Create(ScriptCore3);
 end;
 
 procedure TScriptGameAPI.CompilerRegister(Compiler: TPascalCompiler);

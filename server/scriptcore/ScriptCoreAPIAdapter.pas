@@ -17,7 +17,6 @@ type
 
   TScriptCoreAPIAdapter = class(TScriptCore3API)
   private
-    FScript: TScript;
     FAppOnIdleTimer: Longint;
     FDisabled: Boolean;
   public
@@ -91,8 +90,8 @@ uses
 
 constructor TScriptCoreAPIAdapter.Create(Script: TScript);
 begin
-  Self.FScript := Script;
-  SElf.FAppOnIdleTimer := 60;
+  inherited Create(Script);
+  Self.FAppOnIdleTimer := 60;
   Self.FDisabled := False;
 end;
 

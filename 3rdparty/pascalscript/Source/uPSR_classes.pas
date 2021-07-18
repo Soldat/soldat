@@ -218,13 +218,7 @@ begin
     RegisterVirtualAbstractMethod(TMemoryStream, @TMemoryStream.SEEK, 'Seek');
     RegisterMethod(@TSTREAM.READBUFFER, 'ReadBuffer');
     RegisterMethod(@TSTREAM.WRITEBUFFER, 'WriteBuffer');
-    {$IFDEF DELPHI4UP}
-    {$IFNDEF PS_NOINT64}
     RegisterMethod(@TSTREAM.COPYFROM, 'CopyFrom');
-    {$ENDIF}
-    {$ELSE}
-    RegisterMethod(@TSTREAM.COPYFROM, 'CopyFrom');
-    {$ENDIF}
     RegisterPropertyHelper(@TSTREAMPOSITION_R, @TSTREAMPOSITION_W, 'Position');
     RegisterPropertyHelper(@TSTREAMSIZE_R, {$IFDEF DELPHI3UP}@TSTREAMSIZE_W, {$ELSE}nil, {$ENDIF}'Size');
   end;
@@ -261,11 +255,24 @@ begin
   end;
 end;
 
+{$IFDEF UNICODE}
+  {$IFNDEF FPC}
+    {$DEFINE STRINGSTREAMFIX}
+  {$ENDIF}
+{$ENDIF}
+
+{$IFDEF STRINGSTREAMFIX}
+function TStringStreamCreateString(AHidden1: Pointer; AHidden2: Byte; const AString: string): TStringStream;
+begin
+  Result := TStringStream.Create(AString);
+end;
+{$ENDIF}
+
 procedure RIRegisterTSTRINGSTREAM(Cl: TPSRuntimeClassImporter);
 begin
   with Cl.Add(TSTRINGSTREAM) do
   begin
-    RegisterConstructor(@TSTRINGSTREAM.CREATE, 'Create');
+    RegisterConstructor({$IFDEF STRINGSTREAMFIX}@TStringStreamCreateString{$ELSE}@TSTRINGSTREAM.CREATE{$ENDIF}, 'Create');
   end;
 end;
 

@@ -73,11 +73,10 @@ end;
 
 
 constructor TScriptGlobalAPI.Create(Script: TScript);
-{$push}{$warn 5024 off}
 begin
+  inherited Create(Script);
   Self.FGlobal := TScriptGlobal.Create;
 end;
-{$pop}
 
 procedure TScriptGlobalAPI.CompilerRegister(Compiler: TPascalCompiler);
 var

@@ -1,22 +1,17 @@
 ﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
     <PropertyGroup>
         <ProjectGuid>{EA463298-00FA-42B3-87EB-DD289B924EA0}</ProjectGuid>
-        <MainSource>PascalScript_Core_D24.dpk</MainSource>
+        <MainSource>PascalScript_Core_D27.dpk</MainSource>
         <Base>True</Base>
-        <Config Condition="'$(Config)'==''">Debug</Config>
+        <Config Condition="'$(Config)'==''">Release</Config>
         <DCC_DCCCompiler>DCC32</DCC_DCCCompiler>
-        <ProjectVersion>18.1</ProjectVersion>
+        <ProjectVersion>19.0</ProjectVersion>
         <FrameworkType>VCL</FrameworkType>
         <Platform Condition="'$(Platform)'==''">Win32</Platform>
         <AppType>Package</AppType>
         <TargetedPlatforms>3</TargetedPlatforms>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Config)'=='Base' or '$(Base)'!=''">
-        <Base>true</Base>
-    </PropertyGroup>
-    <PropertyGroup Condition="('$(Platform)'=='Android' and '$(Base)'=='true') or '$(Base_Android)'!=''">
-        <Base_Android>true</Base_Android>
-        <CfgParent>Base</CfgParent>
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="('$(Platform)'=='Win32' and '$(Base)'=='true') or '$(Base_Win32)'!=''">
@@ -46,7 +41,7 @@
         <Base>true</Base>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base)'!=''">
-        <SanitizedProjectName>PascalScript_Core_D24</SanitizedProjectName>
+        <SanitizedProjectName>PascalScript_Core_D27</SanitizedProjectName>
         <DCC_UsePackage>rtl;dbrtl;$(DCC_UsePackage)</DCC_UsePackage>
         <VerInfo_Build>673</VerInfo_Build>
         <VerInfo_Keys>CompanyName=RemObjects Software;FileDescription=;FileVersion=3.0.29.673;InternalName=;LegalCopyright=;LegalTrademarks=;OriginalFilename=;ProductName=Pascal Script;ProductVersion=3.0.0.0;Comments=;CompileDate=Friday, March 21, 2008 1:24 PM</VerInfo_Keys>
@@ -67,25 +62,19 @@
         <DCC_N>false</DCC_N>
         <DCC_K>false</DCC_K>
     </PropertyGroup>
-    <PropertyGroup Condition="'$(Base_Android)'!=''">
-        <VerInfo_IncludeVerInfo>false</VerInfo_IncludeVerInfo>
-        <EnabledSysJars>android-support-v4.dex.jar;apk-expansion.dex.jar;cloud-messaging.dex.jar;fmx.dex.jar;google-analytics-v2.dex.jar;google-play-billing.dex.jar;google-play-licensing.dex.jar;google-play-services.dex.jar</EnabledSysJars>
-        <BT_BuildType>Debug</BT_BuildType>
-        <VerInfo_Keys>package=com.embarcadero.$(MSBuildProjectName);label=$(MSBuildProjectName);versionCode=1;versionName=1.0.0;persistent=False;restoreAnyVersion=False;installLocation=auto;largeHeap=False;theme=TitleBar;hardwareAccelerated=true;apiKey=</VerInfo_Keys>
-    </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win32)'!=''">
         <DCC_Namespace>System.Win;$(DCC_Namespace)</DCC_Namespace>
-        <DCC_BplOutput>..\Dcu\D24\win32</DCC_BplOutput>
-        <DCC_UnitSearchPath>..\Dcu\D24\win32;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_DcpOutput>..\Dcu\D24\win32</DCC_DcpOutput>
-        <DCC_DcuOutput>..\Dcu\D24\win32</DCC_DcuOutput>
-        <DCC_UsePackage>vcl;PascalScript_Core_D24;$(DCC_UsePackage)</DCC_UsePackage>
+        <DCC_BplOutput>..\Dcu\D27\win32</DCC_BplOutput>
+        <DCC_UnitSearchPath>..\Dcu\D27\win32;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_DcpOutput>..\Dcu\D27\win32</DCC_DcpOutput>
+        <DCC_DcuOutput>..\Dcu\D27\win32</DCC_DcuOutput>
+        <DCC_UsePackage>vcl;PascalScript_Core_D27;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Base_Win64)'!=''">
-        <DCC_BplOutput>..\Dcu\D24\win64</DCC_BplOutput>
-        <DCC_UnitSearchPath>..\Dcu\D24\win64;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
-        <DCC_DcpOutput>..\Dcu\D24\win64</DCC_DcpOutput>
-        <DCC_DcuOutput>..\Dcu\D24\win64</DCC_DcuOutput>
+        <DCC_BplOutput>..\Dcu\D27\win64</DCC_BplOutput>
+        <DCC_UnitSearchPath>..\Dcu\D27\win64;$(DCC_UnitSearchPath)</DCC_UnitSearchPath>
+        <DCC_DcpOutput>..\Dcu\D27\win64</DCC_DcpOutput>
+        <DCC_DcuOutput>..\Dcu\D27\win64</DCC_DcuOutput>
         <DCC_Namespace>System.Win;Data.Win;Datasnap.Win;Web.Win;Soap.Win;Xml.Win;$(DCC_Namespace)</DCC_Namespace>
         <DCC_UsePackage>vcl;$(DCC_UsePackage)</DCC_UsePackage>
     </PropertyGroup>
@@ -169,7 +158,7 @@
         <BorlandProject>
             <Delphi.Personality>
                 <Source>
-                    <Source Name="MainSource">PascalScript_Core_D24.dpk</Source>
+                    <Source Name="MainSource">PascalScript_Core_D27.dpk</Source>
                 </Source>
                 <Parameters/>
                 <VersionInfo>
@@ -203,9 +192,6 @@
                 <Excluded_Packages/>
             </Delphi.Personality>
             <Platforms>
-                <Platform value="Android">False</Platform>
-                <Platform value="iOSDevice32">False</Platform>
-                <Platform value="iOSSimulator">False</Platform>
                 <Platform value="Win32">True</Platform>
                 <Platform value="Win64">True</Platform>
             </Platforms>
